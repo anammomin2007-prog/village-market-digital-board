@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Village Market Digital Board</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"><i class="fa-solid fa-store"></i></div>
+        <div>
+          <h1>Village Market Digital Board</h1>
+          <p class="meta">Stay updated with daily prices, events & local news</p>
+        </div>
+      </div>
+      <div class="time"><i class="fa-regular fa-clock"></i> <span id="time"></span></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Welcome Section -->
+    <section class="hero-section">
+      <h2 class="section-title"><i class="fa-solid fa-handshake"></i> Welcome to Jaysingpur Weekly Bazaar</h2>
+      <p>Get the latest prices and announcements for all categories below:</p>
+
+      <!-- Category Buttons -->
+      <div class="button-grid">
+        <a href="vegetables.html" class="btn"><i class="fa-solid fa-carrot"></i> Vegetables</a>
+        <a href="fruits.html" class="btn"><i class="fa-solid fa-apple-whole"></i> Fruits</a>
+        <a href="dairy.html" class="btn"><i class="fa-solid fa-cow"></i> Dairy</a>
+        <a href="spices.html" class="btn"><i class="fa-solid fa-pepper-hot"></i> Spices</a>
+      </div>
+    </section>
+
+    <!-- Market Information -->
+    <section class="info">
+      <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> Market Highlights</h2>
+      <ul>
+        <li>🕒 Open Hours: 7 AM – 8 PM</li>
+        <li>📍 Location: Central Ground, Jaysingpur </li>
+        <li>💳 Digital Payments Accepted (UPI/QR)</li>
+        <li>🚗 Free Parking Available</li>
+      </ul>
+    </section>
+
+    <!-- Village News Section -->
+    <section class="news">
+      <h2 class="section-title"><i class="fa-solid fa-newspaper"></i> Village News</h2>
+      <div class="news-grid">
+        <div class="news-card">
+          <h3><i class="fa-solid fa-seedling"></i> New Cold Storage Unit</h3>
+          <p>The Panchayat inaugurated a new cold storage unit for local farmers to preserve produce efficiently.</p>
+        </div>
+        <div class="news-card">
+          <h3><i class="fa-solid fa-school"></i> School Wins Cleanliness Award</h3>
+          <p>Shantigram Primary School received the district-level cleanliness award for maintaining hygiene standards.</p>
+        </div>
+        <div class="news-card">
+          <h3><i class="fa-solid fa-water"></i> Water Supply Update</h3>
+          <p>The updated tanker schedule for all wards has been published at the Gram Seva Kendra notice board.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Announcements Section -->
+    <section class="announcements">
+      <h2 class="section-title"><i class="fa-solid fa-bullhorn"></i> Announcements</h2>
+      <ul class="announcement-list">
+        <li><i class="fa-regular fa-clock"></i> 10:00 AM – Milk cooperative meeting at Hall A.</li>
+        <li><i class="fa-regular fa-clock"></i> 12:30 PM – Free seed distribution for the first 100 farmers.</li>
+        <li><i class="fa-regular fa-clock"></i> 03:00 PM – Product demo by local SHG at main stage.</li>
+        <li><i class="fa-regular fa-clock"></i> 05:30 PM – Folk music performance near Gate 1.</li>
+      </ul>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p><i class="fa-solid fa-building-columns"></i> Managed by Jaysingpur Panchayat • <i class="fa-solid fa-phone"></i> +91 9876543210 <br> </p>
+    </footer>
+  </main>
+
+  <script>
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('time').textContent = now.toLocaleTimeString();
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+  </script>
+</body>
+</html>
