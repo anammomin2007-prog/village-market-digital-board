@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>My Orders - Village Market</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Arial;padding:18px;background:#f6f8fb}
+    .card{background:#fff;padding:14px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-width:900px;margin:8px auto;}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #eee;padding:8px;text-align:left}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>My Orders</h2>
+  <div id="authArea">
+    <div id="signedOut">
+      <input id="email" placeholder="Email" /><input id="password" type="password" placeholder="Password" />
+      <button id="btnLogin">Login</button>
+    </div>
+    <div id="signedIn" style="display:none;">
+      Logged in as <span id="userEmail"></span> <button id="btnLogout">Logout</button>
+    </div>
+  </div>
+
+  <div id="ordersBlock" style="display:none;">
+    <table id="ordersTable">
+      <thead><tr><th>Order ID</th><th>Items</th><th>Total</th><th>Created</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCcqror4oDL002_eM_YGfqnixUXYMucq80",
+    authDomain: "village-market-digital-board.firebaseapp.com",
+    projectId: "village-market-digital-board",
+    storageBucket: "village-market-digital-board.firebasestorage.app",
+    messagingSenderId: "566562274208",
+    appId: "1:566562274208:web:c94cd4d12999a9e99902c5",
+    measurementId: "G-CX1Q8EP104"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const btnLogin = document.getElementById('btnLogin');
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+  const signedIn = document.getElementById('signedIn');
+  const signedOut = document.getElementById('signedOut');
+  const userEmail = document.getElementById('userEmail');
+  const btnLogout = document.getElementById('btnLogout');
+  const ordersBlock = document.getElementById('ordersBlock');
+  const ordersTableBody = document.querySelector('#ordersTable tbody');
+
+  btnLogin.onclick = () => {
+    auth.signInWithEmailAndPassword(email.value, password.value).catch(e=>alert('Login: '+e.message));
+  };
+
+  btnLogout.onclick = () => auth.signOut().then(()=>location.reload());
+
+  auth.onAuthStateChanged(user => {
+    if(user){
+      signedIn.style.display = 'block';
+      signedOut.style.display = 'none';
+      userEmail.textContent = user.email;
+      ordersBlock.style.display = 'block';
+      loadUserOrders(user.uid);
+    } else {
+      signedIn.style.display = 'none';
+      signedOut.style.display = 'block';
+      ordersBlock.style.display = 'none';
+    }
+  });
+
+  function loadUserOrders(uid){
+    db.collection('orders').where('userId','==',uid).orderBy('createdAt','desc').onSnapshot(snapshot=>{
+      ordersTableBody.innerHTML = '';
+      snapshot.forEach(doc=>{
+        const d = doc.data();
+        const created = d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleString() : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${doc.id}</td><td>${(d.items||[]).map(i=>i.raw||i.name).join('<br>')}</td><td>${d.total||'-'}</td><td>${created}</td><td>${d.status}</td>`;
+        ordersTableBody.appendChild(tr);
+      });
+    });
+  }
+</script>
+</body>
+</html>

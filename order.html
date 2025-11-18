@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Place Order - Village Market Board</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 18px; background:#f6f8fb; color:#222; }
+    .card { background:#fff; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:900px; margin:10px auto;}
+    input, textarea { width:100%; padding:8px; margin:6px 0 12px 0; border:1px solid #ddd; border-radius:6px; }
+    button{ padding:10px 14px; border:none; border-radius:8px; cursor:pointer; background:#1565c0; color:white;}
+    .small { font-size:0.9rem; color:#555; }
+    .inline { display:flex; gap:8px; align-items:center; }
+    .order-status { margin-top:12px; padding:10px; background:#e8f0ff; border-radius:8px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Place an Order</h2>
+
+  <!-- Authentication area -->
+  <div id="authBox" class="card" style="margin-bottom:12px;">
+    <div id="signedIn" style="display:none;">
+      Logged in as <strong id="uEmail"></strong>
+      <button id="btnSignOut" style="margin-left:12px;background:#f44336;">Logout</button>
+      <div class="small" style="margin-top:8px;">
+        <a href="myorders.html">My Orders</a>
+      </div>
+    </div>
+
+    <div id="signedOut">
+      <input id="inputEmail" type="email" placeholder="Email (will be used for login)" />
+      <input id="inputPassword" type="password" placeholder="Password" />
+      <div style="display:flex; gap:8px;">
+        <button id="btnSignup">Sign up</button>
+        <button id="btnLogin" style="background:#2e7d32;">Login</button>
+      </div>
+      <p class="small">If you're a new user, click Sign up then Login to proceed.</p>
+    </div>
+  </div>
+
+  <!-- Order form -->
+  <form id="orderForm">
+    <label>Name</label>
+    <input id="name" required placeholder="Your name" />
+
+    <label>Phone</label>
+    <input id="phone" required placeholder="+91xxxxxxxxxx" />
+
+    <label>Category (Vegetables/Fruits/Dairy/Spices)</label>
+    <input id="category" required placeholder="Vegetables" />
+
+    <label>Order Items (one per line, format: item | qty | price)</label>
+    <textarea id="items" rows="4" placeholder="Potato | 2 | 30&#10;Banana | 1 | 40"></textarea>
+
+    <button type="submit">Place Order</button>
+  </form>
+
+  <div id="orderResult" class="order-status" style="display:none;"></div>
+</div>
+
+<!-- Firebase SDKs (compat, easier for students) -->
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // ---------- Firebase config (from your project) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyCcqror4oDL002_eM_YGfqnixUXYMucq80",
+    authDomain: "village-market-digital-board.firebaseapp.com",
+    projectId: "village-market-digital-board",
+    storageBucket: "village-market-digital-board.firebasestorage.app",
+    messagingSenderId: "566562274208",
+    appId: "1:566562274208:web:c94cd4d12999a9e99902c5",
+    measurementId: "G-CX1Q8EP104"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // UI refs
+  const inputEmail = document.getElementById('inputEmail');
+  const inputPassword = document.getElementById('inputPassword');
+  const btnSignup = document.getElementById('btnSignup');
+  const btnLogin = document.getElementById('btnLogin');
+  const signedIn = document.getElementById('signedIn');
+  const signedOut = document.getElementById('signedOut');
+  const uEmail = document.getElementById('uEmail');
+  const btnSignOut = document.getElementById('btnSignOut');
+
+  // Auth handlers
+  btnSignup.onclick = async () => {
+    const email = inputEmail.value.trim();
+    const pwd = inputPassword.value;
+    if(!email || !pwd) return alert('Enter email and password');
+    try {
+      await auth.createUserWithEmailAndPassword(email, pwd);
+      alert('Signup success. You are now logged in.');
+    } catch(e) {
+      alert('Signup error: ' + e.message);
+    }
+  };
+
+  btnLogin.onclick = async () => {
+    const email = inputEmail.value.trim();
+    const pwd = inputPassword.value;
+    if(!email || !pwd) return alert('Enter email and password');
+    try {
+      await auth.signInWithEmailAndPassword(email, pwd);
+    } catch(e) {
+      alert('Login error: ' + e.message);
+    }
+  };
+
+  btnSignOut.onclick = () => auth.signOut();
+
+  auth.onAuthStateChanged(user => {
+    if(user){
+      signedIn.style.display = 'block';
+      signedOut.style.display = 'none';
+      uEmail.textContent = user.email;
+    } else {
+      signedIn.style.display = 'none';
+      signedOut.style.display = 'block';
+    }
+  });
+
+  // Utility: parse items textarea to array of objects
+  function parseItems(text) {
+    const lines = text.split('\n').map(s=>s.trim()).filter(Boolean);
+    const arr = [];
+    let total = 0;
+    for(const line of lines){
+      // Accept formats like "Potato | 2 | 30" or "Potato,2,30"
+      let parts = line.includes('|') ? line.split('|') : line.split(',');
+      parts = parts.map(p=>p.trim());
+      const name = parts[0] || '';
+      const qty = parseFloat(parts[1]) || 1;
+      const price = parseFloat(parts[2]) || 0;
+      total += price;
+      arr.push({ name, qty, price, raw: line });
+    }
+    return { arr, total };
+  }
+
+  // Order submit
+  const orderForm = document.getElementById('orderForm');
+  const orderResult = document.getElementById('orderResult');
+
+  orderForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const user = auth.currentUser;
+    if(!user) return alert('Please login or sign up before placing order');
+
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const category = document.getElementById('category').value.trim();
+    const itemsText = document.getElementById('items').value.trim();
+    if(!name || !phone || !itemsText) return alert('Please complete all fields');
+
+    const parsed = parseItems(itemsText);
+    const orderDoc = {
+      userId: user.uid,
+      name,
+      phone,
+      email: user.email,
+      category,
+      items: parsed.arr,
+      total: parsed.total,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      const docRef = await db.collection('orders').add(orderDoc);
+      orderResult.style.display = 'block';
+      orderResult.textContent = "Order placed. Order ID: " + docRef.id + " (Status: pending)";
+      // start listening for updates on this order
+      listenOrderStatus(docRef.id);
+      orderForm.reset();
+    } catch(err) {
+      alert('Error placing order: ' + err.message);
+    }
+  });
+
+  // Listen to order document updates for the given id
+  function listenOrderStatus(orderId) {
+    const docRef = db.collection('orders').doc(orderId);
+    docRef.onSnapshot(doc => {
+      if(!doc.exists) return;
+      const data = doc.data();
+      orderResult.textContent = `Order ID: ${orderId} — Status: ${data.status}`;
+      if(data.status === 'accepted') {
+        // user notification (popup). Could improve later
+        alert('Your order has been accepted by admin. Order ID: ' + orderId);
+      } else if(data.status === 'rejected') {
+        alert('Your order was rejected. Contact admin.');
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
