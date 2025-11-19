@@ -1,154 +1,94 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Admin - Manage Orders</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body{font-family:Arial; padding:18px; background:#fbfcfe;}
-    .card{background:#fff;padding:14px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06); max-width:1100px;margin:8px auto;}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #eee;padding:8px;text-align:left}
-    .accept{background:#2e7d32;color:white;padding:6px 8px;border-radius:6px;border:none;cursor:pointer}
-    .reject{background:#c62828;color:white;padding:6px 8px;border-radius:6px;border:none;cursor:pointer}
-    .loginRow{display:flex; gap:8px; align-items:center}
-  </style>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    body { font-family: Arial; padding:20px; background:#eef1f5; }
+    .card { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); max-width:900px; margin:auto; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    th, td { padding:10px; border:1px solid #ccc; }
+    .btn { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; color:white; }
+    .accept { background:#2e7d32; }
+    .reject { background:#c62828; }
+    .complete { background:#1565c0; }
+    #loginBox input { width:100%; padding:12px; margin:10px 0; }
+</style>
 </head>
 <body>
 
-<div class="card">
-  <h2>Admin - Orders</h2>
-  <div id="loginBlock" class="card">
-    <div id="adminSignedOut">
-      <div class="loginRow">
-        <input id="adminEmail" placeholder="admin email" />
-        <input id="adminPass" type="password" placeholder="password" />
-        <button id="loginBtn">Login</button>
-      </div>
-      <p class="small">Admin accounts must be added by project owner in Firebase Auth, then admin UID added to Firestore `admins` collection.</p>
-    </div>
-    <div id="adminSignedIn" style="display:none;">
-      <button id="btnLogout">Logout</button>
-    </div>
-  </div>
-
-  <div id="ordersBlock" class="card" style="display:none;">
-    <h3>All Orders</h3>
-    <table id="ordersTable">
-      <thead><tr><th>Order ID</th><th>User</th><th>Category</th><th>Items</th><th>Total</th><th>Created</th><th>Status</th><th>Action</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<div class="card" id="loginBox">
+    <h2>Admin Login</h2>
+    <input id="adminPass" type="password" placeholder="Enter admin password">
+    <button class="btn accept" onclick="login()">Login</button>
+    <p style="color:red; display:none;" id="loginError">Incorrect password</p>
 </div>
 
-<!-- Firebase compat SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+<div class="card" id="adminPanel" style="display:none;">
+    <h2>All Orders</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Category</th>
+                <th>Items</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="orderTable"></tbody>
+    </table>
+</div>
 
 <script>
-  // ---------- Firebase config ----------
-  const firebaseConfig = {
-    apiKey: "AIzaSyCcqror4oDL002_eM_YGfqnixUXYMucq80",
-    authDomain: "village-market-digital-board.firebaseapp.com",
-    projectId: "village-market-digital-board",
-    storageBucket: "village-market-digital-board.appspot.com",
-    messagingSenderId: "566562274208",
-    appId: "1:566562274208:web:c94cd4d12999a9e99902c5",
-    measurementId: "G-CX1Q8EP104"
-};
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
-  // UI refs
-  const loginBtn = document.getElementById('loginBtn');
-  const adminEmail = document.getElementById('adminEmail');
-  const adminPass = document.getElementById('adminPass');
-  const ordersTableBody = document.querySelector('#ordersTable tbody');
-  const ordersBlock = document.getElementById('ordersBlock');
-  const adminSignedIn = document.getElementById('adminSignedIn');
-  const adminSignedOut = document.getElementById('adminSignedOut');
-  const btnLogout = document.getElementById('btnLogout');
-
-  loginBtn.onclick = async () => {
-    try {
-      const res = await auth.signInWithEmailAndPassword(adminEmail.value, adminPass.value);
-      const uid = res.user.uid;
-      // verify in admins collection
-      const adminDoc = await db.collection('admins').doc(uid).get();
-      if(!adminDoc.exists){
-        alert('Not an admin. Please ask the project owner to add your UID to admins collection.');
-        auth.signOut();
+function login() {
+    const pass = document.getElementById("adminPass").value;
+    if (pass !== "admin123") {
+        document.getElementById("loginError").style.display = "block";
         return;
-      }
-      adminSignedOut.style.display = 'none';
-      adminSignedIn.style.display = 'block';
-      ordersBlock.style.display = 'block';
-      startOrdersListener();
-    } catch(e) {
-      alert('Login error: '+e.message);
     }
-  };
 
-  btnLogout.onclick = () => auth.signOut().then(()=> location.reload());
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadOrders();
+}
 
-  let unsubscribe = null;
-  function startOrdersListener(){
-    if(unsubscribe) unsubscribe();
-    unsubscribe = db.collection('orders').orderBy('createdAt','desc').onSnapshot(snapshot=>{
-      ordersTableBody.innerHTML = '';
-      snapshot.forEach(doc=>{
-        const d = doc.data();
-        const tr = document.createElement('tr');
-        const created = d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleString() : '';
-        tr.innerHTML = `
-          <td>${doc.id}</td>
-          <td>${d.name} <br>(${d.email})</td>
-          <td>${d.category || '-'}</td>
-          <td>${(d.items||[]).map(i=>i.raw||i.name).join('<br>')}</td>
-          <td>${d.total || '-'}</td>
-          <td>${created}</td>
-          <td>${d.status}</td>
-          <td>
-            <button class="accept" data-id="${doc.id}">Accept</button>
-            <button class="reject" data-id="${doc.id}">Reject</button>
-            <button class="complete" data-id="${doc.id}">Complete</button>
-          </td>
+function loadOrders() {
+    let orders = JSON.parse(localStorage.getItem("orders")) || [];
+    let table = document.getElementById("orderTable");
+    table.innerHTML = "";
+
+    orders.forEach((order, i) => {
+        let row = `
+            <tr>
+                <td>${order.name}</td>
+                <td>${order.phone}</td>
+                <td>${order.category}</td>
+                <td>${order.items}</td>
+                <td>${order.time}</td>
+                <td>${order.status}</td>
+                <td>
+                    <button class="btn accept" onclick="updateStatus(${i}, 'Accepted')">Accept</button>
+                    <button class="btn reject" onclick="updateStatus(${i}, 'Rejected')">Reject</button>
+                    <button class="btn complete" onclick="updateStatus(${i}, 'Completed')">Complete</button>
+                </td>
+            </tr>
         `;
-        ordersTableBody.appendChild(tr);
-      });
-
-      // attach event handlers
-      document.querySelectorAll('.accept').forEach(b=>{
-        b.onclick = async (e) => {
-          const id = e.target.dataset.id;
-          await db.collection('orders').doc(id).update({
-            status:'accepted',
-            acceptedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          alert('Accepted ' + id);
-        };
-      });
-      document.querySelectorAll('.reject').forEach(b=>{
-        b.onclick = async (e) => {
-          const id = e.target.dataset.id;
-          await db.collection('orders').doc(id).update({ status:'rejected' });
-          alert('Rejected ' + id);
-        };
-      });
-      document.querySelectorAll('.complete').forEach(b=>{
-        b.onclick = async (e) => {
-          const id = e.target.dataset.id;
-          await db.collection('orders').doc(id).update({ status:'completed' });
-          alert('Completed ' + id);
-        };
-      });
+        table.innerHTML += row;
     });
-  }
+}
+
+function updateStatus(id, status) {
+    let orders = JSON.parse(localStorage.getItem("orders"));
+    orders[id].status = status;
+    localStorage.setItem("orders", JSON.stringify(orders));
+    loadOrders();
+}
 </script>
 
 </body>
 </html>
-
-
